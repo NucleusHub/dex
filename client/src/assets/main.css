@@ -1,0 +1,96 @@
+@import "tailwindcss";
+@import "../../core/assets/motion.css";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@source "../**/*.{vue,js}";
+@source "../../core/**/*.{vue,js}";
+
+html { background-color: #f1f5f9; }
+html.dark { background-color: #0d0d1a; }
+
+/* Horizontal scroll without a visible scrollbar (series/set rails on mobile). */
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+.no-scrollbar::-webkit-scrollbar { display: none; }
+
+/* Liquid glass — translucent + heavily saturated so the ambient background blobs
+   bleed their colour through, with a bright inset top edge for the sheen and a
+   soft drop shadow so the panel reads as glass floating over the scene. The
+   `backdrop-filter` is left unprefixed on purpose: Lightning CSS (see
+   vite.config css.lightningcss.targets) adds the -webkit- prefix at build. */
+.glass {
+  background: rgba(255, 255, 255, 0.42);
+  backdrop-filter: blur(22px) saturate(190%);
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  box-shadow:
+    0 1px 0 0 rgba(255, 255, 255, 0.75) inset,
+    0 10px 34px -14px rgba(15, 23, 42, 0.28);
+}
+.dark .glass {
+  background: rgba(28, 24, 52, 0.44);
+  border-color: rgba(160, 135, 235, 0.20);
+  box-shadow:
+    0 1px 0 0 rgba(190, 170, 255, 0.12) inset,
+    0 12px 38px -14px rgba(0, 0, 0, 0.65);
+}
+
+/* ── Card artwork ────────────────────────────────────────────────────────────
+   Every Pokémon card image shares one aspect ratio (the real 63×88mm card) and
+   one corner radius, so grids stay on a rhythm even while artwork streams in. */
+.dex-card-ratio { aspect-ratio: 63 / 88; }
+
+/* A not-yet-owned card is dimmed and desaturated so an owned card reads as the
+   "lit up" state at a glance — the collection's primary signal. Hovering still
+   brings it back to full colour so browsing never feels punished. */
+.dex-unowned {
+  filter: grayscale(0.72) brightness(0.82) contrast(0.96);
+  opacity: 0.72;
+  transition: filter 0.35s ease, opacity 0.35s ease;
+}
+.group:hover .dex-unowned { filter: grayscale(0.1) brightness(0.97); opacity: 0.95; }
+
+/* Foil sheen that sweeps across an owned card on hover. Purely decorative and
+   masked to the card's rounded box; disabled under reduced-motion below. */
+.dex-sheen::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: linear-gradient(105deg, transparent 38%, rgba(255, 255, 255, 0.5) 48%, transparent 58%);
+  background-size: 260% 100%;
+  background-position: 140% 0;
+  opacity: 0;
+  transition: background-position 0.75s ease, opacity 0.3s ease;
+}
+.group:hover .dex-sheen::after { background-position: -40% 0; opacity: 1; }
+
+/* A card seen through an empty binder pocket. `--d` is how many sheets deep it
+   sits, so the further back it is the fainter and softer it gets — the stack
+   recedes instead of every ghost sitting at the same distance. Never solid
+   enough to be mistaken for a card in this pocket. */
+.dex-ghost {
+  --d: 1;
+  opacity: calc(0.20 / var(--d));
+  filter: grayscale(0.5) blur(calc(0.8px + var(--d) * 0.7px));
+}
+.dark .dex-ghost {
+  opacity: calc(0.26 / var(--d));
+}
+
+/* A card seen from BEHIND — the reverse of a sheet, where the card faces away.
+   Drawn rather than shipped: the real card back is Nintendo's artwork, and at
+   ghost opacity all that carries anyway is the silhouette. Deliberately our own
+   indigo, in keeping with not imitating the official Pokémon UI. */
+.dex-ghost-back {
+  background:
+    radial-gradient(circle at 50% 40%, rgba(226, 232, 255, 0.55) 0 17%, transparent 18%),
+    radial-gradient(circle at 50% 40%, rgba(226, 232, 255, 0.28) 0 26%, transparent 27%),
+    linear-gradient(160deg, #4f46e5 0%, #312e81 55%, #1e1b4b 100%);
+  box-shadow: inset 0 0 0 6px rgba(226, 232, 255, 0.18);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dex-sheen::after { display: none; }
+  .dex-unowned { transition: none; }
+}

@@ -1,0 +1,52 @@
+{
+  "id": "dex",
+  "name": "Dex",
+  "description": "Your Pokémon TCG collection",
+  "version": "0.1.0",
+  "manifestVersion": 1,
+  "compatibility": {
+    "nucleus": ">=0.1.0 <1.0.0"
+  },
+  "route": "/dex",
+  "icon": "icon.svg",
+  "category": "media",
+  "localization": {
+    "defaultLanguage": "en-US"
+  },
+  "hub": {
+    "showInSidebar": true,
+    "showOnDashboard": true
+  },
+  "nginx": {
+    "routes": [
+      {
+        "path": "/dex",
+        "upstream": "dex-client:5183",
+        "websocket": true
+      },
+      {
+        "path": "/api/dex",
+        "upstream": "dex-server:3013"
+      }
+    ]
+  },
+  "server": {
+    "service": "dex-server",
+    "port": 3013,
+    "env": {
+      "MONGODB_URI": "mongodb://mongo:27017/nucleus",
+      "JWT_SECRET": "${JWT_SECRET:-nucleus-jwt-secret}"
+    },
+    "depends": [
+      "mongo"
+    ],
+    "namedVolumes": [
+      "dex_uploads_data:/app/uploads"
+    ],
+    "bindMounts": [
+      "../core:/app/core:ro",
+      "../plugins:/app/plugins:ro"
+    ],
+    "healthEndpoint": "/api/dex/health"
+  }
+}
