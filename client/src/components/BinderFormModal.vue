@@ -20,6 +20,9 @@ const props = defineProps({
   show: { type: Boolean, default: false },
   // null → create mode.
   binder: { type: Object, default: null },
+  // Which tab to land on. Lets the binder's Share button open this dialog
+  // straight onto Sharing rather than making the user find it behind Details.
+  initialTab: { type: String, default: 'details' },
 })
 const emit = defineEmits(['close', 'saved'])
 
@@ -61,12 +64,20 @@ const TABS = computed(() => {
   return tabs
 })
 
+// Bound with v-model:tab rather than a static `tab` prop: TemplateModal lets a
+// bound `tab` win over its own internal state, so a one-way binding would pin
+// the dialog to one tab and swallow every click on the tab bar.
+const tab = ref('details')
+
 watch(
   () => [props.show, props.binder],
   ([show]) => {
     if (!show) return
     error.value = ''
     artworkQuery.value = ''
+    // Fall back to Details if the requested tab isn't on offer — e.g. Sharing
+    // asked for on a binder whose sharing plugin is gone.
+    tab.value = TABS.value.some((x) => x.key === props.initialTab) ? props.initialTab : 'details'
     form.value = props.binder
       ? {
           name: props.binder.name,
@@ -155,6 +166,7 @@ const LABEL = 'text-[11px] font-medium uppercase tracking-wide text-slate-400 da
     footer
     size="lg"
     :tabs="TABS"
+    v-model:tab="tab"
     :title="editing ? t('dex.binder.editTitle') : t('dex.binder.newTitle')"
     :confirm-label="editing ? t('dex.binder.save') : t('dex.binder.create')"
     :busy="busy"

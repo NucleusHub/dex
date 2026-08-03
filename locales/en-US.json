@@ -109,6 +109,7 @@
   "dex.binder.pageCount": "{count} pages",
   "dex.binder.mine": "Your binders",
   "dex.binder.sharedWithMe": "Shared with you",
+  "dex.binder.share": "Share",
   "dex.binder.shared": "Shared",
   "dex.binder.group": "Group",
   "dex.binder.emptyTitle": "No binders yet",

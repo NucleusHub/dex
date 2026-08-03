@@ -2,6 +2,7 @@
 import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from '@core/useI18n.js'
+import { useRegistry } from '@core/useRegistry.js'
 import { useSettingsModal } from '@core/useSettingsModal.js'
 import BackgroundBlobs from '@core/BackgroundBlobs.vue'
 import TemplateModal from '@core/TemplateModal.vue'
@@ -14,6 +15,7 @@ import CardPickerModal from '@/components/CardPickerModal.vue'
 import CardDetailModal from '@/components/CardDetailModal.vue'
 import SettingsModal from '@/components/SettingsModal.vue'
 import { getBinder, setBinderSlot, updateBinder, deleteBinder } from '@/api/dex.js'
+import { binderPanels } from '@/utils/pluginIndicators.js'
 import { useBinders } from '@/composables/useBinders.js'
 import { primeCards } from '@/composables/useCollection.js'
 import { useCardOverlay } from '@/composables/useCardOverlay.js'
@@ -27,7 +29,12 @@ import { useCardOverlay } from '@/composables/useCardOverlay.js'
 const route = useRoute()
 const router = useRouter()
 const { t } = useI18n()
+const { isPluginEnabled } = useRegistry()
 const { upsert, remove: removeFromList } = useBinders()
+
+// Sharing is plugin-owned, so the Share button only exists when a plugin is
+// actually there to answer it — same gate the settings dialog's tab uses.
+const canShare = computed(() => binderPanels.some((p) => isPluginEnabled(p.pluginId)))
 const { open: settingsOpen, closeSettings } = useSettingsModal()
 const { cardId, showCard, openCard, closeCard } = useCardOverlay()
 
@@ -55,6 +62,13 @@ const error = ref(null)
 const busy = ref(false)
 
 const showEdit = ref(false)
+// Which tab the settings dialog opens on — the pencil wants Details, the Share
+// button wants Sharing. One dialog, two doors into it.
+const editTab = ref('details')
+function openSettings(tab = 'details') {
+  editTab.value = tab
+  showEdit.value = true
+}
 const showPicker = ref(false)
 const confirmDelete = ref(false)
 const pickerPosition = ref(null)
@@ -255,7 +269,7 @@ watch(() => route.params.id, (id) => load(String(id)), { immediate: true })
             v-if="binder?.canEditBinder"
             class="cursor-pointer p-2 text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
             :title="t('dex.binder.edit')"
-            @click="showEdit = true"
+            @click="openSettings()"
           >
             <Icon name="pencil" :sw="2" class="w-4 h-4" />
           </button>
@@ -302,6 +316,17 @@ watch(() => route.params.id, (id) => load(String(id)), { immediate: true })
               >
                 <Icon name="plus" :sw="2.5" class="w-4 h-4" />
                 {{ t('dex.binder.addPage') }}
+              </button>
+              <!-- Sharing used to be reachable only through the pencil, which
+                   reads as "rename and re-cover" — nobody found it there. -->
+              <button
+                v-if="binder.canEditBinder && canShare"
+                class="cursor-pointer inline-flex items-center gap-1.5 rounded-lg bg-black/5 dark:bg-white/10 hover:bg-black/10 dark:hover:bg-white/15 px-3 py-2 text-sm font-medium transition-colors"
+                :title="t('dex.binder.share')"
+                @click="openSettings('sharing')"
+              >
+                <Icon name="users" :sw="2" class="w-4 h-4" />
+                {{ t('dex.binder.share') }}
               </button>
               <button
                 v-if="binder.canEditBinder"
@@ -359,7 +384,7 @@ watch(() => route.params.id, (id) => load(String(id)), { immediate: true })
         </template>
       </main>
 
-      <BinderFormModal :show="showEdit" :binder="binder" @close="showEdit = false" @saved="onSaved" />
+      <BinderFormModal :show="showEdit" :binder="binder" :initial-tab="editTab" @close="showEdit = false" @saved="onSaved" />
       <CardPickerModal :show="showPicker" @close="showPicker = false" @pick="onPick" />
       <CardDetailModal
         :show="showCard"
