@@ -6,11 +6,6 @@ import { Spinner } from '@core/icons'
 import { getCollection, searchCards } from '@/api/dex.js'
 import { cardNumber } from '@/utils/format.js'
 
-// Pick a card to slot into a binder pocket.
-//
-// Defaults to the user's OWN collection — you fill a physical binder with cards
-// you have — but a toggle searches the whole catalog, because people do build
-// "want" pages. The distinction is explicit rather than hidden behind a filter.
 const props = defineProps({
   show: { type: Boolean, default: false },
 })
@@ -18,7 +13,7 @@ const emit = defineEmits(['close', 'pick'])
 
 const { t } = useI18n()
 
-const scope = ref('collection') // 'collection' | 'catalog'
+const scope = ref('collection')
 const query = ref('')
 const rows = ref([])
 const loading = ref(false)
@@ -30,7 +25,6 @@ const SCOPES = computed(() => [
 ])
 
 async function run() {
-  // Guard against a slow earlier request overwriting a newer one's results.
   const mine = ++seq
   loading.value = true
   try {

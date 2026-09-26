@@ -4,19 +4,11 @@ import CollectionItem from '../models/CollectionItem.js'
 import { normalizeName, escapeRegex } from '../utils/normalize.js'
 import { shapeCard, shapeItem } from './catalog.js'
 
-// Search runs over the COMPLETE catalog, not the user's collection — that's the
-// point: you look a card up, then decide whether to add it. Ownership is only an
-// annotation on the results (and an optional filter).
 const router = Router()
 
 const PAGE_SIZE = 60
 const MAX_PAGE_SIZE = 120
 
-// GET /search?q=&series=&set=&rarity=&owned=&page=&pageSize=
-//
-// `q` matches a card's name OR its printed number, so "charizard", "025" and
-// "TG12" all work. Everything else is an exact facet filter. Results are paged
-// because a bare rarity filter can match thousands of cards.
 router.get('/search', async (req, res) => {
   try {
     const q = String(req.query.q ?? '').trim()
@@ -32,11 +24,7 @@ router.get('/search', async (req, res) => {
     if (q) {
       const norm = normalizeName(q)
       const ors = []
-      // Name: substring match on the normalised, indexed field, so "pikachu"
-      // finds "Pikachu V" and accents/punctuation don't matter either side.
       if (norm) ors.push({ searchName: new RegExp(escapeRegex(norm)) })
-      // Number: anchored, and only when the query looks like one — otherwise a
-      // plain word query would scan every card number for nothing.
       if (/^[a-z]{0,3}\d{1,4}[a-z]?$/i.test(q)) {
         ors.push({ number: new RegExp(`^0*${escapeRegex(q.replace(/^0+/, ''))}$`, 'i') })
       }
@@ -44,8 +32,6 @@ router.get('/search', async (req, res) => {
       filter.$or = ors
     }
 
-    // "Owned only" / "missing only" is applied as a card-id filter rather than a
-    // post-filter, so paging stays correct.
     const ownedFilter = String(req.query.owned ?? '')
     if (ownedFilter === 'yes' || ownedFilter === 'no') {
       const mine = await CollectionItem.find({ profileId: req.profile.profileId }).select('cardId').lean()
@@ -53,16 +39,12 @@ router.get('/search', async (req, res) => {
       filter.cardId = ownedFilter === 'yes' ? { $in: ids } : { $nin: ids }
     }
 
-    // A query with no terms and no facets would page through the entire
-    // catalog; that's a browse, not a search, and the series view does it better.
     if (!q && !req.query.series && !req.query.set && !req.query.rarity && !req.query.type) {
       return res.json({ results: [], total: 0, page, pageSize })
     }
 
     const [cards, total] = await Promise.all([
       Card.find(filter)
-        // Newest first, then release order within the set — a search for a
-        // Pokémon should surface its modern printings before its 1999 one.
         .sort({ seriesId: 1, setId: 1, numberSort: 1 })
         .skip((page - 1) * pageSize)
         .limit(pageSize)
@@ -70,7 +52,6 @@ router.get('/search', async (req, res) => {
       Card.countDocuments(filter),
     ])
 
-    // Annotate just this page's cards with ownership — one indexed lookup.
     const items = await CollectionItem.find({
       profileId: req.profile.profileId,
       cardId: { $in: cards.map((c) => c.cardId) },
@@ -88,8 +69,6 @@ router.get('/search', async (req, res) => {
   }
 })
 
-// GET /facets — the distinct values the search filters offer. Derived from the
-// catalog so the dropdowns only ever list rarities/types that actually exist.
 router.get('/facets', async (_req, res) => {
   try {
     const [rarities, types] = await Promise.all([

@@ -1,8 +1,4 @@
 <script setup>
-// Renders a Dex-local glyph (utils/icons.js) with exactly the same contract as
-// the shared <Icon> from @core/icons: currentColor, class-driven sizing. Kept
-// as a separate component rather than forking core's — a view imports whichever
-// one owns the glyph it wants, and the two are interchangeable at the call site.
 import { computed } from 'vue'
 import { DEX_ICONS } from '@/utils/icons.js'
 

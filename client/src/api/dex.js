@@ -1,10 +1,7 @@
 import { createApiClient } from '@core/createApiClient.js'
 
-// Thin endpoint map over the shared core REST helper (sends the session cookie,
-// shapes errors). Everything the client does goes through here.
 const api = createApiClient('/api/dex')
 
-// ── Catalog (global, immutable) ──────────────────────────────────────────────
 export const getCatalogState = () => api.get('/catalog/state')
 export const getSeries = () => api.get('/series')
 export const getSeriesDetail = (seriesId) => api.get(`/series/${encodeURIComponent(seriesId)}`)
@@ -12,7 +9,6 @@ export const getSet = (setId) => api.get(`/sets/${encodeURIComponent(setId)}`)
 export const getCard = (cardId) => api.get(`/cards/${encodeURIComponent(cardId)}`)
 export const getStats = () => api.get('/stats')
 
-// ── Search ───────────────────────────────────────────────────────────────────
 export const searchCards = (params = {}) => {
   const q = new URLSearchParams()
   for (const [k, v] of Object.entries(params)) if (v !== '' && v != null) q.set(k, v)
@@ -20,7 +16,6 @@ export const searchCards = (params = {}) => {
 }
 export const getFacets = () => api.get('/facets')
 
-// ── Collection (per-user) ────────────────────────────────────────────────────
 export const getCollection = (params = {}) => {
   const q = new URLSearchParams()
   for (const [k, v] of Object.entries(params)) if (v !== '' && v != null) q.set(k, v)
@@ -31,7 +26,6 @@ export const addToCollection = (cardId, data = {}) => api.post('/collection', { 
 export const updateCollectionItem = (cardId, data) => api.patch(`/collection/${encodeURIComponent(cardId)}`, data)
 export const removeFromCollection = (cardId) => api.del(`/collection/${encodeURIComponent(cardId)}`)
 
-// ── Binders ──────────────────────────────────────────────────────────────────
 export const getBinders = () => api.get('/binders')
 export const getBinder = (id) => api.get(`/binders/${id}`)
 export const createBinder = (data) => api.post('/binders', data)
@@ -41,18 +35,15 @@ export const setBinderSlot = (id, position, cardId) => api.put(`/binders/${id}/s
 export const setBinderSlots = (id, slots) => api.put(`/binders/${id}/slots`, { slots })
 export const getCoverArtwork = () => api.get('/binders/covers')
 
-// ── Settings ─────────────────────────────────────────────────────────────────
 export const getSettings = () => api.get('/settings')
 export const saveSettings = (data) => api.put('/settings', data)
 
-// ── Admin ────────────────────────────────────────────────────────────────────
 export const getAdminCatalog = () => api.get('/admin/catalog')
 export const saveAdminCatalog = (data) => api.patch('/admin/catalog', data)
 export const startCatalogSync = (force = false) => api.post('/admin/catalog/sync', { force })
 export const setSeriesArtwork = (seriesId, artworkUrl) =>
   api.patch(`/admin/series/${encodeURIComponent(seriesId)}/artwork`, { artworkUrl })
 
-// Binder-cover upload lives on the app server's shared /api/upload endpoint.
 export async function uploadCover(file) {
   const form = new FormData()
   form.append('image', file)

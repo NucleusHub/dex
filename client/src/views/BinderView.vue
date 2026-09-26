@@ -20,31 +20,18 @@ import { useBinders } from '@/composables/useBinders.js'
 import { primeCards } from '@/composables/useCollection.js'
 import { useCardOverlay } from '@/composables/useCardOverlay.js'
 
-// A binder, read the way you'd actually go through a physical one: an open
-// spread of two pages on a wide screen, one page below `md`. No infinite
-// scroll — you turn to page 4, you're on page 4, and the URL says so.
-//
-// The spread and its 3-D page turn live in BinderBook.vue; this view owns the
-// data, the pocket edits and which page is open.
 const route = useRoute()
 const router = useRouter()
 const { t } = useI18n()
 const { isPluginEnabled } = useRegistry()
 const { upsert, remove: removeFromList } = useBinders()
 
-// Sharing is plugin-owned, so the Share button only exists when a plugin is
-// actually there to answer it — same gate the settings dialog's tab uses.
 const canShare = computed(() => binderPanels.some((p) => isPluginEnabled(p.pluginId)))
 const { open: settingsOpen, closeSettings } = useSettingsModal()
 const { cardId, showCard, openCard, closeCard } = useCardOverlay()
 
-// Every filled pocket in the binder, in position order — so ← / → in the card
-// overlay walks the whole book rather than stopping at a page boundary.
 const binderCardIds = computed(() => pages.value.flat().filter((s) => s.card).map((s) => s.card.cardId))
 
-// Stepping onto a card that lives on another page turns the binder to it, so
-// closing the overlay leaves you looking at the page you ended on. Page and
-// card move in ONE router.replace — two would race and one would win.
 function onCardNavigate(nextId) {
   const idx = pages.value.findIndex((p) => p.some((s) => s.card?.cardId === nextId))
   const query = { ...route.query, card: nextId }
@@ -62,8 +49,6 @@ const error = ref(null)
 const busy = ref(false)
 
 const showEdit = ref(false)
-// Which tab the settings dialog opens on — the pencil wants Details, the Share
-// button wants Sharing. One dialog, two doors into it.
 const editTab = ref('details')
 function openSettings(tab = 'details') {
   editTab.value = tab
@@ -73,8 +58,6 @@ const showPicker = ref(false)
 const confirmDelete = ref(false)
 const pickerPosition = ref(null)
 
-// The current page lives in the URL (`?page=2`, 1-based) so a page is linkable
-// and Back walks the pages you turned.
 const pageIndex = computed(() => {
   const n = Number(route.query.page)
   const max = pages.value.length
@@ -82,12 +65,8 @@ const pageIndex = computed(() => {
   return Math.min(n - 1, Math.max(0, max - 1))
 })
 
-// -1 turning back, +1 turning forward. Only used for cross-page card
-// navigation now; the book component owns its own flip direction.
 const direction = ref(1)
 
-// The book animates the turn and then tells us where it landed, so the URL
-// follows the animation rather than fighting it.
 function goTo(index) {
   const clamped = Math.max(0, Math.min(index, pages.value.length - 1))
   if (clamped === pageIndex.value) return
@@ -95,8 +74,6 @@ function goTo(index) {
   router.replace({ query: { ...route.query, page: clamped + 1 } })
 }
 
-// Paging is delegated to the book: on a wide screen it steps a whole spread
-// (two pages), below `md` a single page.
 const book = ref(null)
 const canPrev = computed(() => book.value?.canPrev ?? pageIndex.value > 0)
 const canNext = computed(() => book.value?.canNext ?? pageIndex.value < pages.value.length - 1)
@@ -104,12 +81,10 @@ const turn = (dir) => book.value?.turn(dir)
 
 const editable = computed(() => !!binder.value?.canEditCards)
 
-// Mirrors the book's own breakpoint so the pager label matches what's on screen.
 const isWideNow = ref(true)
 let mq = null
 function syncWide(e) { isWideNow.value = e.matches }
 
-// "Pages 3–4 of 12" on a spread, "Page 3 of 12" on a single page.
 const spreadLabel = computed(() => {
   const total = pages.value.length
   if (!isWideNow.value) return t('dex.binder.pageOf', { page: pageIndex.value + 1, total })
@@ -128,13 +103,6 @@ async function load(id) {
     binder.value = data.binder
     pages.value = data.pages
     upsert(data.binder)
-    // Pocket cards carry the viewer's own ownership — prime it so an owned card
-    // renders lit, and one they don't have reads as un-owned.
-    //
-    // A binder slot is `{ position, card, owned }`: ownership sits BESIDE the
-    // card, not on it. Mapping to `s.card` (which has no `.owned`) silently
-    // primed nothing, so every card in every binder rendered greyed-out until
-    // its detail view was opened. Reshape to what primeCards actually reads.
     primeCards(
       data.pages
         .flat()
@@ -147,11 +115,6 @@ async function load(id) {
     loading.value = false
   }
 }
-
-// ── Pocket edits ─────────────────────────────────────────────────────────────
-// Applied optimistically to the local page, then confirmed. On failure the whole
-// binder is reloaded rather than guessed at — a shared binder may have moved
-// under us, and the server's copy is the one that's true.
 
 async function applySlot(position, card) {
   const page = Math.floor(position / (binder.value?.slotsPerPage ?? 9))
@@ -184,8 +147,6 @@ function onPick(card) {
   pickerPosition.value = null
 }
 
-// Add a page and turn to it — the binder grows the way a real one does, by
-// putting another sheet in when you run out.
 async function addPage() {
   if (!binder.value || busy.value) return
   busy.value = true
@@ -219,15 +180,12 @@ async function doDelete() {
   }
 }
 
-// Changing the layout re-flows the pockets, so reload rather than re-paginate
-// locally — the server already owns that arithmetic.
 async function onSaved(updated) {
   binder.value = { ...binder.value, ...updated }
   upsert(binder.value)
   await load(binder.value.id)
 }
 
-// Arrow keys turn pages, as long as focus isn't in a field and no dialog is up.
 function onKeydown(e) {
   if (showEdit.value || showPicker.value || showCard.value || confirmDelete.value) return
   const tag = document.activeElement?.tagName
@@ -276,7 +234,6 @@ watch(() => route.params.id, (id) => load(String(id)), { immediate: true })
         </template>
       </DexHeader>
 
-      <!-- Wider than the other views: an open spread is two pages of pockets. -->
       <main class="max-w-[88rem] mx-auto px-4 py-6 flex flex-col gap-5">
         <div v-if="loading && !binder" class="py-24 grid place-items-center text-slate-400">
           <Spinner class="w-7 h-7 animate-spin" />
@@ -290,7 +247,6 @@ watch(() => route.params.id, (id) => load(String(id)), { immediate: true })
         </div>
 
         <template v-else-if="binder">
-          <!-- Binder header -->
           <section class="glass rounded-2xl p-4 flex flex-wrap items-center justify-between gap-4">
             <div class="flex items-center gap-4 min-w-0">
               <div class="shrink-0 w-14 h-14 rounded-xl overflow-hidden bg-black/5 dark:bg-white/8 grid place-items-center">
@@ -317,8 +273,6 @@ watch(() => route.params.id, (id) => load(String(id)), { immediate: true })
                 <Icon name="plus" :sw="2.5" class="w-4 h-4" />
                 {{ t('dex.binder.addPage') }}
               </button>
-              <!-- Sharing used to be reachable only through the pencil, which
-                   reads as "rename and re-cover" — nobody found it there. -->
               <button
                 v-if="binder.canEditBinder && canShare"
                 class="cursor-pointer inline-flex items-center gap-1.5 rounded-lg bg-black/5 dark:bg-white/10 hover:bg-black/10 dark:hover:bg-white/15 px-3 py-2 text-sm font-medium transition-colors"
@@ -339,7 +293,6 @@ watch(() => route.params.id, (id) => load(String(id)), { immediate: true })
             </div>
           </section>
 
-          <!-- The open binder -->
           <section class="glass rounded-3xl p-4 sm:p-6">
             <BinderBook
               ref="book"
@@ -355,7 +308,6 @@ watch(() => route.params.id, (id) => load(String(id)), { immediate: true })
             />
           </section>
 
-          <!-- Pager -->
           <nav class="flex items-center justify-center gap-4">
             <button
               class="cursor-pointer grid place-items-center w-10 h-10 rounded-full glass transition-opacity disabled:opacity-30 disabled:cursor-default hover:shadow-lg"
@@ -407,6 +359,3 @@ watch(() => route.params.id, (id) => load(String(id)), { immediate: true })
     </div>
   </div>
 </template>
-
-<!-- The page turn itself lives in BinderBook.vue, which owns the spread and the
-     3-D leaf. This view only decides which page is open. -->

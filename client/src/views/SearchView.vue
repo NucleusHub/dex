@@ -16,13 +16,6 @@ import { useCardOverlay } from '@/composables/useCardOverlay.js'
 import { OWNED_FILTERS } from '@/utils/constants.js'
 import { count } from '@/utils/format.js'
 
-// Search across the COMPLETE catalog — name, number, series, set, rarity, type.
-// Ownership is an annotation on the results (the same lit/dimmed treatment as
-// the set grid) and an optional filter, never a precondition.
-//
-// The URL is the state: every control writes a query param, so a search is
-// shareable and Back steps through refinements. The header's search box owns
-// `q`; this view owns the facets.
 const route = useRoute()
 const router = useRouter()
 const { t, locale } = useI18n()
@@ -41,16 +34,13 @@ const facets = ref({ rarities: [], types: [] })
 
 const q = computed(() => String(route.query.q ?? ''))
 const hasMore = computed(() => results.value.length < total.value)
-// Arrows walk the results you've actually loaded — including pages pulled in by
-// "Load more", since those are appended to the same array.
 const siblingIds = computed(() => results.value.map((c) => c.cardId))
 
-// Facet controls write straight to the URL; the watcher below re-runs the query.
 function setParam(key, value) {
   const query = { ...route.query }
   if (value) query[key] = value
   else delete query[key]
-  delete query.card // a facet change closes the card overlay
+  delete query.card
   router.replace({ query })
 }
 
@@ -68,8 +58,6 @@ function clearFilters() {
 }
 
 async function run(reset = true) {
-  // Nothing to search on: the server would answer empty anyway, and this avoids
-  // a request on every keystroke that clears the box.
   if (!q.value && !hasFilters.value) {
     results.value = []
     total.value = 0
@@ -89,8 +77,6 @@ async function run(reset = true) {
     })
     results.value = reset ? res.results : [...results.value, ...res.results]
     total.value = res.total
-    // Results carry ownership, but only for the cards in them — prime, don't
-    // claim their whole sets are known.
     primeCards(res.results)
   } catch (e) {
     error.value = e
@@ -106,8 +92,6 @@ async function loadMore() {
   await run(false)
 }
 
-// Re-run whenever the query or any facet changes — but NOT when only `card`
-// changes, which is just the overlay opening.
 watch(
   () => [route.query.q, route.query.series, route.query.rarity, route.query.type, route.query.owned],
   () => run(true),
@@ -133,7 +117,6 @@ const CHIP_ACTIVE = 'bg-indigo-50 dark:bg-indigo-500/15 border-indigo-300 dark:b
       </DexHeader>
 
       <main class="max-w-[110rem] mx-auto px-4 py-6 flex flex-col gap-5">
-        <!-- Facets -->
         <div class="glass rounded-2xl p-2 flex flex-wrap items-center gap-1.5">
           <div class="inline-flex items-center gap-0.5 bg-black/[0.04] dark:bg-white/5 rounded-xl p-1">
             <button
@@ -201,7 +184,6 @@ const CHIP_ACTIVE = 'bg-indigo-50 dark:bg-indigo-500/15 border-indigo-300 dark:b
           </span>
         </div>
 
-        <!-- States -->
         <div v-if="loading" class="py-24 grid place-items-center text-slate-400">
           <Spinner class="w-7 h-7 animate-spin" />
         </div>

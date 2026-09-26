@@ -7,12 +7,6 @@ import { count, year } from '@/utils/format.js'
 import ProgressBar from '@/components/ProgressBar.vue'
 import ProgressLabel from '@/components/ProgressLabel.vue'
 
-// A series on the homepage: one large, artwork-led tile.
-//
-// The official set logo is the whole point of the tile, so it sits on a
-// deterministic gradient derived from the series id (see utils/artwork.js) and
-// gets the full width. Text is kept to a name, a card count and a progress line;
-// everything else waits until you open it.
 const props = defineProps({
   series: { type: Object, required: true },
 })
@@ -24,8 +18,6 @@ const artwork = computed(() => seriesArtwork(props.series))
 const gradient = computed(() => seriesGradient(props.series))
 const owned = computed(() => ownedInSeries(props.series.seriesId))
 
-// A logo that 404s (upstream art occasionally moves) falls back to the gradient
-// alone rather than leaving a broken-image box in the grid.
 const artworkFailed = ref(false)
 
 const span = computed(() => {
@@ -41,7 +33,6 @@ const span = computed(() => {
     :to="`/series/${series.seriesId}`"
     class="group relative block rounded-3xl overflow-hidden nuc-press focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
   >
-    <!-- Artwork plate -->
     <div class="relative aspect-[16/10] overflow-hidden" :style="{ background: gradient }">
       <img
         v-if="artwork && !artworkFailed"
@@ -52,7 +43,6 @@ const span = computed(() => {
         class="absolute inset-0 w-full h-full object-contain p-8 drop-shadow-2xl transition-transform duration-500 ease-out group-hover:scale-[1.045]"
         @error="artworkFailed = true"
       />
-      <!-- Bottom scrim so the name stays legible over any artwork -->
       <div class="absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-black/70 via-black/25 to-transparent" />
 
       <div class="absolute inset-x-0 bottom-0 p-4 sm:p-5 flex flex-col gap-2.5">

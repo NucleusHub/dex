@@ -12,15 +12,10 @@ import {
   canView, canEditCards, canEditBinder, canDelete,
 } from '../utils/binderAccess.js'
 
-// Binders. Permissions are entirely delegated to the active access policy
-// (utils/binderAccess.js): with no sharing plugin installed the policy is
-// personal-only and these routes behave exactly as if sharing didn't exist.
 const router = Router()
 const uploadsDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../uploads')
 
-// Load a binder and the caller's role on it in one place, so no route forgets
-// the permission check. Returns null (and answers 404) when they may not see it
-// — a 404 rather than a 403, so binder ids can't be probed for existence.
+// 404 rather than 403 so binder ids can't be probed for existence.
 async function loadFor(req, res) {
   const binder = await Binder.findById(req.params.id).lean().catch(() => null)
   if (!binder) { res.status(404).json({ error: 'Binder not found' }); return null }
@@ -29,9 +24,6 @@ async function loadFor(req, res) {
   return { binder, role }
 }
 
-// Resolve a cover descriptor to a URL the client can render. Upload covers are
-// already URLs; `set` and `card` covers point at official artwork in the catalog
-// and are looked up so a re-sync's better image is picked up automatically.
 async function resolveCovers(binders) {
   const setIds = binders.filter((b) => b.cover?.kind === 'set').map((b) => b.cover.refId)
   const cardIds = binders.filter((b) => b.cover?.kind === 'card').map((b) => b.cover.refId)
@@ -60,13 +52,9 @@ function shapeBinder(b, role, coverUrl) {
     cardCount: (b.slots || []).length,
     cover: b.cover || { kind: 'none' },
     coverUrl,
-    // Everything the client needs to decide which affordances to show. It still
-    // gates on these; the server re-checks on every write regardless.
     role,
     canEditCards: canEditCards(role),
     canEditBinder: canEditBinder(role),
-    // Present so shared-binder UI can tell a group binder from a personal one
-    // without knowing the plugin's internals.
     groupId: b.groupId ? String(b.groupId) : null,
     shared: !!b.groupId || (b.shares?.length ?? 0) > 0,
     createdAt: b.createdAt,
@@ -74,7 +62,6 @@ function shapeBinder(b, role, coverUrl) {
   }
 }
 
-// GET /binders — every binder the caller may open.
 router.get('/binders', async (req, res) => {
   try {
     const filter = await listFilterFor(req.profile.profileId)
@@ -89,12 +76,7 @@ router.get('/binders', async (req, res) => {
   }
 })
 
-// GET /binders/covers — the official artwork a user can pick a cover from.
-// Sourced from the synced catalog (set logos), which is genuine official art
-// already on hand — so no copyrighted images are vendored into the repo.
-//
-// Declared before `/binders/:id` because Express matches in order and would
-// otherwise read "covers" as a binder id.
+// Declared before /binders/:id so "covers" isn't matched as an id.
 router.get('/binders/covers', async (_req, res) => {
   try {
     const sets = await Set_.find({ logoUrl: { $ne: null } })
@@ -110,8 +92,6 @@ router.get('/binders/covers', async (_req, res) => {
   }
 })
 
-// POST /binders — create one. Cover and layout are optional; a binder with no
-// cover renders a generated gradient rather than a placeholder image.
 router.post('/binders', async (req, res) => {
   try {
     const name = String(req.body?.name ?? '').trim()
@@ -133,9 +113,6 @@ router.post('/binders', async (req, res) => {
   }
 })
 
-// GET /binders/:id — the binder plus its pages, each pocket resolved to a full
-// card (and to the caller's own ownership of that card, so a shared binder can
-// show "you don't have this one").
 router.get('/binders/:id', async (req, res) => {
   try {
     const loaded = await loadFor(req, res)
@@ -153,8 +130,6 @@ router.get('/binders/:id', async (req, res) => {
     const byOwned = new Map(items.map((i) => [i.cardId, shapeItem(i)]))
 
     const perPage = SLOTS_PER_PAGE[binder.layout] ?? 9
-    // Always render at least as many pages as the highest filled pocket needs,
-    // so a layout change from 3×3 to 2×2 can never hide cards off the end.
     const highest = (binder.slots || []).reduce((m, s) => Math.max(m, s.position), -1)
     const pageCount = Math.max(binder.pageCount || 1, Math.floor(highest / perPage) + 1)
 
@@ -178,7 +153,6 @@ router.get('/binders/:id', async (req, res) => {
   }
 })
 
-// PATCH /binders/:id — rename / re-cover / change layout / add pages.
 router.patch('/binders/:id', async (req, res) => {
   try {
     const loaded = await loadFor(req, res)
@@ -194,7 +168,6 @@ router.patch('/binders/:id', async (req, res) => {
     if (req.body?.layout !== undefined && LAYOUTS.includes(req.body.layout)) patch.layout = req.body.layout
     if (req.body?.pageCount !== undefined) patch.pageCount = Math.max(1, Number(req.body.pageCount) || 1)
     if (req.body?.cover !== undefined) {
-      // Replacing an uploaded cover leaves the old file orphaned otherwise.
       const prev = loaded.binder.cover
       patch.cover = sanitizeCover(req.body.cover)
       if (prev?.kind === 'upload' && prev.url !== patch.cover.url) unlinkUpload(prev.url)
@@ -208,8 +181,6 @@ router.patch('/binders/:id', async (req, res) => {
   }
 })
 
-// DELETE /binders/:id — the binder only. The cards inside stay in the user's
-// collection: a binder is an arrangement of cards, not a container that owns them.
 router.delete('/binders/:id', async (req, res) => {
   try {
     const loaded = await loadFor(req, res)
@@ -223,10 +194,6 @@ router.delete('/binders/:id', async (req, res) => {
   }
 })
 
-// PUT /binders/:id/slots/:position — put a card in a pocket, or empty it with
-// `{ cardId: null }`. One pocket per request: that's exactly the granularity of
-// the interaction, and it keeps concurrent edits to a shared binder from
-// clobbering each other the way a whole-binder PUT would.
 router.put('/binders/:id/slots/:position', async (req, res) => {
   try {
     const loaded = await loadFor(req, res)
@@ -239,8 +206,6 @@ router.put('/binders/:id/slots/:position', async (req, res) => {
     const cardId = req.body?.cardId ? String(req.body.cardId) : null
     if (cardId && !(await Card.exists({ cardId }))) return res.status(404).json({ error: 'Card not found' })
 
-    // Clear the pocket first either way, so setting a card is an overwrite and
-    // clearing is just the first half on its own.
     await Binder.updateOne({ _id: req.params.id }, { $pull: { slots: { position } } })
     if (cardId) {
       await Binder.updateOne({ _id: req.params.id }, { $push: { slots: { position, cardId } } })
@@ -254,8 +219,6 @@ router.put('/binders/:id/slots/:position', async (req, res) => {
   }
 })
 
-// PUT /binders/:id/slots — reorder/replace the whole layout in one write. Used
-// by drag-and-drop, which moves two pockets at once and would otherwise flicker.
 router.put('/binders/:id/slots', async (req, res) => {
   try {
     const loaded = await loadFor(req, res)
@@ -263,8 +226,6 @@ router.put('/binders/:id/slots', async (req, res) => {
     if (!canEditCards(loaded.role)) return res.status(403).json({ error: 'Not allowed' })
 
     const incoming = Array.isArray(req.body?.slots) ? req.body.slots : []
-    // Last write wins per position, so a malformed payload can't create two
-    // cards in one pocket.
     const byPosition = new Map()
     for (const s of incoming) {
       const position = Number(s?.position)
@@ -274,7 +235,6 @@ router.put('/binders/:id/slots', async (req, res) => {
     }
     const slots = [...byPosition.values()]
 
-    // Reject unknown cards outright rather than silently dropping pockets.
     const ids = [...new Set(slots.map((s) => s.cardId))]
     if (ids.length) {
       const known = await Card.countDocuments({ cardId: { $in: ids } })
@@ -289,8 +249,6 @@ router.put('/binders/:id/slots', async (req, res) => {
   }
 })
 
-// ── Helpers ──────────────────────────────────────────────────────────────────
-
 function sanitizeCover(cover) {
   const kind = ['none', 'upload', 'set', 'card'].includes(cover?.kind) ? cover.kind : 'none'
   if (kind === 'upload') return { kind, url: String(cover.url ?? ''), refId: '' }
@@ -298,7 +256,6 @@ function sanitizeCover(cover) {
   return { kind: 'none', url: '', refId: '' }
 }
 
-// Remove a cover file from disk if (and only if) it's one we uploaded locally.
 function unlinkUpload(url) {
   if (url?.startsWith('/uploads/')) {
     fs.unlink(path.join(uploadsDir, path.basename(url)), () => {})

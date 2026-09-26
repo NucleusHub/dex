@@ -12,12 +12,7 @@ export default defineConfig(({ mode }) => ({
     vue(),
     mode !== 'production' && vueDevTools(),
     tailwindcss(),
-    // Required, not optional: shared @core components import icons as
-    // `foo.svg?component` (core/TemplateModal, core/auth/ProfileSelector, …).
-    // Without this plugin Vite hands back the asset URL instead of a component,
-    // and Vue throws `createElement('data:image/svg+xml,…')` — which blanks the
-    // whole app at the AuthGuard. `defaultImport: 'url'` keeps plain
-    // `import x from './y.svg'` working as a URL, as every other app has it.
+    // Required: @core components import icons as `foo.svg?component`.
     svgLoader({
       defaultImport: 'url',
       svgo: true,
@@ -29,10 +24,7 @@ export default defineConfig(({ mode }) => ({
   css: {
     transformer: 'lightningcss',
     lightningcss: {
-      // Concrete versions so Lightning CSS actually vendor-prefixes (e.g. adds
-      // -webkit-backdrop-filter for Safari while keeping the standard property
-      // for Firefox/Chrome). Open-ended ranges resolve to an empty target set,
-      // which silently disables prefixing and drops the glass blur in prod.
+      // Concrete versions: open-ended ranges silently disable Lightning CSS prefixing.
       targets: {
         safari: (15 << 16) | (4 << 8),
         ios_saf: (15 << 16) | (4 << 8),
@@ -48,8 +40,6 @@ export default defineConfig(({ mode }) => ({
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),
       '@core': fileURLToPath(new URL('./core', import.meta.url)),
-      // Shared widget package (via the ./widgets symlink → repo /widgets), so
-      // core/AuthGuard's @widgets-core import resolves and Pulse widgets can float here.
       '@widgets-core': fileURLToPath(new URL('./widgets/core', import.meta.url)),
     },
   },
@@ -57,9 +47,7 @@ export default defineConfig(({ mode }) => ({
     host: '0.0.0.0',
     port: 5183,
     proxy: {
-      // Pulse state (widgets opting in to show here). Must precede the '/api'
-      // catch-all so it routes to Pulse, not the dex server. Dev-only; prod
-      // nginx routes /api/pulse centrally.
+      // Must precede the '/api' catch-all.
       '/api/pulse': {
         target: process.env.PULSE_TARGET || 'http://localhost:3004',
         changeOrigin: true,

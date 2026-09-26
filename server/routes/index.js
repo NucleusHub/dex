@@ -8,8 +8,6 @@ import binders from './binders.js'
 import settings from './settings.js'
 import admin from './admin.js'
 
-// Everything under /api/dex requires a signed-in profile. Sub-routers mount on
-// the same root; their paths don't collide.
 const router = Router()
 router.use(requireAuth)
 
@@ -18,11 +16,9 @@ router.use(admin)
 router.use(search)
 router.use(collection)
 router.use(binders)
-// Catalog last: it owns the broad /series/:id, /sets/:id and /cards/:id verbs.
+// Catalog last: it owns the broad /:id routes.
 router.use(catalog)
 
-// Plugin routers, mounted under /x/<pluginId> so they can never shadow a
-// first-party endpoint. Awaited at import so the routes exist before listen().
 await loadPluginRoutes(router)
 
 export default router

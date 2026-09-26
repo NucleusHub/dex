@@ -1,8 +1,3 @@
-// Static vocabularies shared across the Dex client. Anything derived from the
-// catalog (rarities, types) is fetched from /facets instead of listed here, so
-// a new expansion never needs a code change.
-
-// Card condition grades, best → worst. Mirrors server/models/CollectionItem.js.
 export const CONDITIONS = ['mint', 'near_mint', 'excellent', 'good', 'played', 'poor']
 
 export const CONDITION_META = {
@@ -21,16 +16,12 @@ export const BINDER_LAYOUTS = [
 
 export const layoutMeta = (key) => BINDER_LAYOUTS.find((l) => l.key === key) || BINDER_LAYOUTS[1]
 
-// Set-view filters. "All" is the absence of a filter, not a value.
 export const OWNED_FILTERS = [
   { key: '', i18n: 'dex.filter.all' },
   { key: 'yes', i18n: 'dex.filter.owned' },
   { key: 'no', i18n: 'dex.filter.missing' },
 ]
 
-// Energy-type accent colours, used only as a thin tint behind a card's type
-// chips. Deliberately muted — the artwork provides the personality, the
-// interface stays Nucleus.
 export const TYPE_TINT = {
   Fire: 'text-orange-600 dark:text-orange-400',
   Water: 'text-sky-600 dark:text-sky-400',

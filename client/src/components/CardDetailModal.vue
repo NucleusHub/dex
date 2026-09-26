@@ -11,20 +11,9 @@ import { CONDITIONS, CONDITION_META, TYPE_TINT } from '@/utils/constants.js'
 import { money, cardNumber, longDate } from '@/utils/format.js'
 import { cardIndicators } from '@/utils/pluginIndicators.js'
 
-// The card view: artwork, card information, market value, and the user's own
-// collection entry. Rendered as an overlay over whatever you were browsing, but
-// driven by a `?card=` query so it's linkable and Back closes it.
-//
-// Two states, and the difference between them is the whole point of the screen:
-// an un-owned card offers one obvious "Add to collection" action; an owned one
-// exposes quantity, condition, notes and purchase details.
 const props = defineProps({
   show: { type: Boolean, default: false },
   cardId: { type: String, default: '' },
-  // Ordered cardIds of the run this card belongs to — the set in release order,
-  // the current search results, the cards in a binder. Lets ← / → walk the same
-  // sequence the user can see behind the overlay, so the order never surprises
-  // them. Empty means no navigation (the arrows and counter hide).
   siblings: { type: Array, default: () => [] },
 })
 const emit = defineEmits(['close', 'navigate'])
@@ -40,8 +29,6 @@ const busy = ref(false)
 const confirmRemove = ref(false)
 const imageFailed = ref(false)
 
-// Local copy of the editable fields. Edits are applied on blur/change rather
-// than on every keystroke, so a notes field isn't twenty PATCHes.
 const form = ref({ quantity: 1, condition: 'near_mint', language: 'en', notes: '', purchase: null })
 const showPurchase = ref(false)
 
@@ -49,25 +36,19 @@ const card = computed(() => detail.value?.card ?? null)
 const owned = computed(() => !!card.value && isOwned(card.value.cardId))
 const item = computed(() => (card.value ? itemFor(card.value.cardId) : null))
 
-// Every price the sources reported, flattened for the value table. The headline
-// figure is card.marketValue; this is the breakdown behind it.
 const priceRows = computed(() => {
   const out = []
   const p = card.value?.prices ?? {}
-  // CardMarket reports one flat set of figures for the card.
   const cm = p.cardmarket
   if (cm?.trendPrice != null) out.push({ label: t('dex.price.cmTrend'), amount: cm.trendPrice, currency: 'EUR' })
   if (cm?.averageSellPrice != null) out.push({ label: t('dex.price.cmAverage'), amount: cm.averageSellPrice, currency: 'EUR' })
   if (cm?.lowPrice != null) out.push({ label: t('dex.price.cmLow'), amount: cm.lowPrice, currency: 'EUR' })
-  // TCGplayer reports per print variant (normal / holofoil / reverseHolofoil),
-  // which are genuinely different cards to a collector, so each gets a row.
   for (const [variant, v] of Object.entries(p.tcgplayer ?? {})) {
     if (v?.market != null) out.push({ label: `${t('dex.price.tcgMarket')} · ${variant}`, amount: v.market, currency: 'USD' })
   }
   return out
 })
 
-// ── Walking the run ──────────────────────────────────────────────────────────
 const index = computed(() => props.siblings.indexOf(props.cardId))
 const canPrev = computed(() => index.value > 0)
 const canNext = computed(() => index.value >= 0 && index.value < props.siblings.length - 1)
@@ -79,9 +60,6 @@ function step(delta) {
   if (next) emit('navigate', next)
 }
 
-// ← / → walk the run. Ignored while the caret is in a field, so editing the
-// notes or typing a quantity doesn't fling you onto another card — that would
-// also silently discard the edit, since fields persist on blur.
 function onKeydown(e) {
   if (!props.show) return
   if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return
@@ -107,8 +85,6 @@ watch(
   () => [props.show, props.cardId],
   async ([show, id]) => {
     if (!show || !id) return
-    // Reset before fetching so reopening on a different card never shows the
-    // previous one's artwork for a frame.
     detail.value = null
     error.value = null
     imageFailed.value = false
@@ -117,9 +93,6 @@ watch(
     loading.value = true
     try {
       detail.value = await getCard(id)
-      // The response is authoritative about whether this profile owns the card;
-      // teach the store before anything reads `owned` from it. Without this a
-      // deep link or a reload shows an owned card as un-owned.
       primeCard(detail.value.card?.cardId, detail.value.owned)
       syncForm()
     } catch (e) {
@@ -131,8 +104,6 @@ watch(
   { immediate: true }
 )
 
-// Keep the editor in step with the store (it may change under us — a quick-add
-// from the grid behind the overlay, or an optimistic rollback).
 watch(item, syncForm)
 
 function syncForm() {
@@ -159,8 +130,6 @@ async function addToCollection() {
   }
 }
 
-// Persist one edited field. Null-safe: editing before the card is owned is
-// impossible (the fields aren't rendered), so this always has an item.
 async function persist(patch) {
   if (!card.value || !owned.value) return
   try {
@@ -237,7 +206,6 @@ const LABEL = 'text-[11px] font-medium uppercase tracking-wide text-slate-400 da
     </div>
 
     <div v-else class="grid gap-6 md:grid-cols-[minmax(0,300px)_minmax(0,1fr)]">
-      <!-- ── Artwork ───────────────────────────────────────────────────────── -->
       <div class="flex flex-col gap-3">
         <div class="relative dex-card-ratio rounded-2xl overflow-hidden bg-black/[0.06] dark:bg-white/[0.06] shadow-xl">
           <img
@@ -253,8 +221,6 @@ const LABEL = 'text-[11px] font-medium uppercase tracking-wide text-slate-400 da
             <Icon name="image" class="w-10 h-10" />
           </div>
 
-          <!-- Step through the run. The keyboard is the fast path (← / →); these
-               exist so the affordance is discoverable and works on touch. -->
           <button
             v-if="canPrev"
             type="button"
@@ -277,14 +243,11 @@ const LABEL = 'text-[11px] font-medium uppercase tracking-wide text-slate-400 da
           </button>
         </div>
 
-        <!-- Where you are in the run, and the hint that the keyboard works. -->
         <p v-if="index >= 0 && siblings.length > 1" class="text-center text-[11px] text-slate-400 dark:text-slate-500 tabular-nums">
           {{ index + 1 }} / {{ siblings.length }}
           <span class="hidden sm:inline opacity-70"> · {{ t('dex.card.arrowHint') }}</span>
         </p>
 
-        <!-- Plugin badges — In Common's "who else has this" lives here in the
-             detail view, at full size rather than as a corner dot. -->
         <div v-if="cardIndicators.length" class="flex flex-wrap items-center gap-2">
           <component
             v-for="ind in cardIndicators"
@@ -297,9 +260,7 @@ const LABEL = 'text-[11px] font-medium uppercase tracking-wide text-slate-400 da
         </div>
       </div>
 
-      <!-- ── Information, value, collection ────────────────────────────────── -->
       <div class="flex flex-col gap-5 min-w-0">
-        <!-- Primary action / owned summary -->
         <div class="glass rounded-2xl p-4">
           <template v-if="!owned">
             <div class="flex items-center justify-between gap-4">
@@ -338,8 +299,6 @@ const LABEL = 'text-[11px] font-medium uppercase tracking-wide text-slate-400 da
               </div>
 
               <div class="grid gap-3 sm:grid-cols-2">
-                <!-- Quantity: a stepper, because adjusting by one is what
-                     actually happens when you pull a duplicate from a pack. -->
                 <div class="flex flex-col gap-1.5">
                   <label :class="LABEL">{{ t('dex.card.quantity') }}</label>
                   <div class="flex items-center gap-1">
@@ -393,8 +352,6 @@ const LABEL = 'text-[11px] font-medium uppercase tracking-wide text-slate-400 da
                 />
               </div>
 
-              <!-- Purchase details are optional and collapsed by default: most
-                   cards are added with a tap and never priced. -->
               <div>
                 <button
                   class="cursor-pointer inline-flex items-center gap-1.5 text-xs font-medium text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"
@@ -424,7 +381,6 @@ const LABEL = 'text-[11px] font-medium uppercase tracking-wide text-slate-400 da
           </template>
         </div>
 
-        <!-- Market value -->
         <section class="flex flex-col gap-2">
           <h3 class="text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
             {{ t('dex.card.marketValue') }}
@@ -469,7 +425,6 @@ const LABEL = 'text-[11px] font-medium uppercase tracking-wide text-slate-400 da
           </div>
         </section>
 
-        <!-- Card information -->
         <section class="flex flex-col gap-2">
           <h3 class="text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
             {{ t('dex.card.information') }}

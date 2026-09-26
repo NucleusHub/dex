@@ -4,13 +4,9 @@ import { useI18n } from '@core/useI18n.js'
 import { pctOf } from '@/composables/useCollection.js'
 import { count } from '@/utils/format.js'
 
-// "203 / 207 collected · 98%" — the sentence that goes with a ProgressBar.
-// Split out because the same numbers appear under a tile, in a header and in the
-// set toolbar, and they must read identically in all three.
 const props = defineProps({
   owned: { type: Number, default: 0 },
   total: { type: Number, default: 0 },
-  // Drop the word "collected" where the context already makes it obvious.
   terse: { type: Boolean, default: false },
 })
 

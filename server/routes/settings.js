@@ -1,8 +1,6 @@
 import { Router } from 'express'
 import Settings from '../models/Settings.js'
 
-// Per-user preferences. Created lazily: a user who never opens settings has no
-// document, and GET simply answers the schema defaults.
 const router = Router()
 
 const FIELDS = ['preferredPriceSource', 'defaultBinderLayout', 'showUnowned', 'showPricesInGrid']

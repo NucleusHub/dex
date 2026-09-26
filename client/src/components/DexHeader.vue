@@ -9,15 +9,7 @@ import AppTabs from '@core/AppTabs.vue'
 import { Icon } from '@core/icons'
 import { DEX_ICONS } from '@/utils/icons.js'
 
-// The app shell: the Nucleus header bar, the cross-app sidebar, top-level nav
-// and the always-present catalog search. Every view renders through it so the
-// chrome is identical everywhere and no view re-implements the search box.
-//
-// Views fill #subtitle (a breadcrumb / context line) and #actions (their own
-// buttons) rather than building their own header.
 defineProps({
-  // Hide the top-level tabs on views that are already a level deep and want the
-  // breadcrumb to carry navigation instead.
   showTabs: { type: Boolean, default: true },
 })
 
@@ -28,10 +20,7 @@ const route = useRoute()
 
 const sidebarOpen = ref(false)
 
-// Top-level nav in the shared underline tab bar. Select mode rather than
-// router mode: RouterLink's active-class is a prefix match, so a tab pointing at
-// '/' would light up on every route. Deriving the active key from the route
-// section instead also lets a set page keep "Series" lit while three levels deep.
+// Select mode, not router mode: RouterLink active-class is a prefix match, so '/' would match every route.
 const TABS = [
   { key: 'series', label: t('dex.nav.series'), icon: DEX_ICONS.stack },
   { key: 'binders', label: t('dex.nav.binders'), icon: DEX_ICONS.binder },
@@ -46,15 +35,9 @@ function selectTab(key) {
   if (key !== activeTab.value) router.push(TAB_ROUTE[key])
 }
 
-// ── Search ───────────────────────────────────────────────────────────────────
-// Typing anywhere in the app searches the whole catalog. The box owns the `q`
-// query param on /search, so the URL stays the source of truth (shareable,
-// reloadable) while the input stays responsive.
 const query = ref(String(route.query.q ?? ''))
 let timer = null
 
-// Keep the box in step when the route changes underneath it (Back, a link, or
-// leaving /search entirely — which clears it).
 watch(
   () => [route.name, route.query.q],
   ([name, q]) => {
@@ -65,18 +48,13 @@ watch(
 
 function onInput() {
   clearTimeout(timer)
-  // Long enough that a fast typist makes one request, short enough to feel live.
   timer = setTimeout(() => {
     const q = query.value.trim()
     if (!q) {
-      // Emptying the box on /search goes back where you came from rather than
-      // stranding the user on an empty results page.
       if (route.name === 'search') router.replace({ name: 'search', query: {} })
       return
     }
     const to = { name: 'search', query: { ...route.query, q } }
-    // Replace while already searching so Back doesn't step through every
-    // keystroke; push the first time so Back leaves search entirely.
     if (route.name === 'search') router.replace(to)
     else router.push(to)
   }, 220)

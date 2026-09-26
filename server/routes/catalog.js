@@ -7,15 +7,8 @@ import CatalogState from '../models/CatalogState.js'
 import { ownedBySeries, ownedBySet, withProgress } from '../utils/progress.js'
 import { toObjectId } from '../utils/ids.js'
 
-// Read-only browsing of the global catalog, each row annotated with the calling
-// user's progress. The catalog itself is identical for everybody; only the
-// `progress` / `owned` fields differ per profile.
 const router = Router()
 
-// GET /catalog/state — is the card database populated, and is a sync running?
-// Any signed-in user may read this: the client needs it to tell "you own nothing
-// yet" apart from "an admin hasn't synced the catalog yet", which are very
-// different empty states. The apiKey is `select: false`, so it can't leak here.
 router.get('/catalog/state', async (_req, res) => {
   try {
     const doc = await CatalogState.findOne({ key: 'catalog' }).lean()
@@ -35,9 +28,6 @@ router.get('/catalog/state', async (_req, res) => {
   }
 })
 
-// GET /series — the homepage. Every series in the catalog, newest first, with
-// its artwork and the user's collection progress. This is the whole list (a
-// couple of dozen rows), so there's no paging to get in the way.
 router.get('/series', async (req, res) => {
   try {
     const [rows, owned] = await Promise.all([
@@ -50,7 +40,6 @@ router.get('/series', async (req, res) => {
   }
 })
 
-// GET /series/:seriesId — one series and every set inside it, in release order.
 router.get('/series/:seriesId', async (req, res) => {
   try {
     const series = await Series.findOne({ seriesId: req.params.seriesId }).lean()
@@ -71,9 +60,6 @@ router.get('/series/:seriesId', async (req, res) => {
   }
 })
 
-// GET /sets/:setId — every card in a set, in release order, each flagged with
-// the caller's ownership. Sets top out around 400 cards, so the whole set ships
-// in one response and the grid filters/sorts instantly on the client.
 router.get('/sets/:setId', async (req, res) => {
   try {
     const set = await Set_.findOne({ setId: req.params.setId }).lean()
@@ -96,8 +82,6 @@ router.get('/sets/:setId', async (req, res) => {
   }
 })
 
-// GET /cards/:cardId — the card detail view: the card, where it sits, and the
-// caller's own entry for it (null when they don't own it).
 router.get('/cards/:cardId', async (req, res) => {
   try {
     const card = await Card.findOne({ cardId: req.params.cardId }).lean()
@@ -120,11 +104,8 @@ router.get('/cards/:cardId', async (req, res) => {
   }
 })
 
-// GET /stats — headline collection numbers for the homepage.
 router.get('/stats', async (req, res) => {
   try {
-    // Aggregations don't cast, so the JWT's string id has to become an ObjectId
-    // explicitly — see utils/ids.js.
     const pid = toObjectId(req.profile.profileId)
     const [totals, owned, seriesCount, setCount] = await Promise.all([
       Series.aggregate([{ $group: { _id: null, cards: { $sum: '$cardCount' } } }]),
@@ -149,11 +130,6 @@ router.get('/stats', async (req, res) => {
     res.status(500).json({ error: err.message })
   }
 })
-
-// ── Response shaping ─────────────────────────────────────────────────────────
-// Mongo internals (_id, __v, timestamps) never cross the wire; the client sees a
-// stable, minimal shape it can cache. Exported because the search and binder
-// routes return the same shapes.
 
 export function shapeSeries(s) {
   return {

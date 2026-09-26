@@ -13,17 +13,11 @@ import { useCatalog } from '@/composables/useCatalog.js'
 import { useCollection } from '@/composables/useCollection.js'
 import { count } from '@/utils/format.js'
 
-// The homepage is the SERIES overview, not the user's collection — every series
-// ever released is here whether they own a card from it or not. That's the
-// premise the whole app is built on, and showing it first is what makes the
-// progress bars mean something.
 const { t, locale } = useI18n()
 const { series, stats, catalogState, loading, error, load, reload, watchSync, stopWatchingSync } = useCatalog()
 const { totalOwned } = useCollection()
 const { open: settingsOpen, closeSettings } = useSettingsModal()
 
-// Total across every series — the denominator for the headline bar. Taken from
-// the catalog rows rather than /stats so it can't disagree with the tiles.
 const totalCards = computed(() => series.value.reduce((n, s) => n + (s.cardCount || 0), 0))
 
 const syncing = computed(() => catalogState.value?.status === 'running')
@@ -31,8 +25,6 @@ const catalogEmpty = computed(() => !loading.value && !error.value && !series.va
 
 onMounted(async () => {
   await load()
-  // If an admin kicked off the first sync, keep refreshing until the series
-  // start appearing instead of leaving the user on an empty page.
   if (syncing.value) watchSync(() => reload())
 })
 
@@ -52,8 +44,6 @@ onBeforeUnmount(stopWatchingSync)
       </DexHeader>
 
       <main class="max-w-7xl mx-auto px-4 py-6 flex flex-col gap-6">
-        <!-- Headline progress. One sentence and one bar: how much of every card
-             ever printed you actually have. -->
         <section v-if="series.length" class="glass rounded-2xl p-5 flex flex-col gap-3">
           <div class="flex flex-wrap items-end justify-between gap-x-6 gap-y-2">
             <div>
@@ -73,7 +63,6 @@ onBeforeUnmount(stopWatchingSync)
           <ProgressBar :owned="totalOwned" :total="totalCards" size="md" />
         </section>
 
-        <!-- States -->
         <div v-if="loading && !series.length" class="py-24 grid place-items-center text-slate-400">
           <Spinner class="w-7 h-7 animate-spin" />
         </div>
@@ -88,8 +77,6 @@ onBeforeUnmount(stopWatchingSync)
           </button>
         </div>
 
-        <!-- Nothing synced yet — a genuinely different empty state from "you own
-             nothing", and the one that needs an admin, not the user. -->
         <CatalogEmpty v-else-if="catalogEmpty" :state="catalogState" @synced="reload" />
 
         <template v-else>

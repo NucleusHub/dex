@@ -21,7 +21,6 @@ app.use(express.json())
 app.use(cookieParser())
 app.use('/uploads', express.static(uploadsDir))
 
-// Binder cover uploads. Small size cap — a cover is a tile, not a scan.
 const storage = multer.diskStorage({
   destination: uploadsDir,
   filename: (req, file, cb) => {
@@ -44,7 +43,6 @@ app.post('/api/upload', upload.single('image'), (req, res) => {
 })
 
 app.get('/api/dex/health', (_, res) => res.json({ ok: true }))
-// Refuse all Dex API access for users who have Dex disabled (admin override).
 app.use('/api/dex', requireAppEnabled('dex'))
 app.use('/api/dex', dexRoutes)
 
@@ -52,8 +50,6 @@ mongoose
   .connect(process.env.MONGODB_URI)
   .then(async () => {
     console.log('[dex] connected to MongoDB')
-    // Let an installed sharing plugin replace the binder permission model before
-    // the first request lands; without one, binders stay strictly personal.
     await loadBinderAccess()
     app.listen(PORT, () => console.log(`[dex] server on port ${PORT}`))
   })

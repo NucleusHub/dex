@@ -5,27 +5,12 @@ import { Icon } from '@core/icons'
 import CardTile from '@/components/CardTile.vue'
 import { layoutMeta } from '@/utils/constants.js'
 
-// One page of a binder: a fixed grid of pockets. Empty pockets are real, sized
-// slots — a page of nine is always a page of nine, whether it holds one card or
-// nine, because that's what makes it a binder page and not a search result.
-//
-// Deliberately not skeuomorphic: no rings, no leather, no page curl. Just the
-// grid, on glass.
 const props = defineProps({
-  slots: { type: Array, required: true }, // [{ position, card, owned }]
+  slots: { type: Array, required: true },
   layout: { type: String, default: '3x3' },
   editable: { type: Boolean, default: false },
-  // Set only for a SHARED binder — narrows plugin indicators to this binder's
-  // members ("already in this collection") rather than the whole network.
   binderId: { type: String, default: '' },
-  // Passed through to the tiles — set on the turning leaf's faces so their
-  // artwork paints during the flip rather than after it.
   eager: { type: Boolean, default: false },
-  // What can be seen THROUGH each empty pocket: `{ card, depth }` per slot, or
-  // null when nothing is visible. BinderBook works out which page each one comes
-  // from — it looks through as many sheets as are actually see-through, not just
-  // the next one — and `depth` (1 = the sheet's own reverse, 2 = the one behind
-  // that, …) drives how faint it renders. Same length as `slots`.
   ghosts: { type: Array, default: () => [] },
 })
 const emit = defineEmits(['open', 'fill', 'clear'])
@@ -42,8 +27,6 @@ const meta = computed(() => layoutMeta(props.layout))
     <div v-for="(slot, i) in slots" :key="slot.position" class="relative group/pocket">
       <template v-if="slot.card">
         <CardTile :card="slot.card" :addable="false" :binder-id="binderId" :eager="eager" @open="emit('open', $event)" />
-        <!-- Remove from the pocket, not from the collection: taking a card out
-             of a binder doesn't mean you sold it. -->
         <button
           v-if="editable"
           type="button"
@@ -55,12 +38,7 @@ const meta = computed(() => layoutMeta(props.layout))
         </button>
       </template>
 
-      <!-- Empty pocket. Whatever sits on the other side of the sheet shows
-           through it — dimmed and blurred so it reads as "behind", never as a
-           card you could tap. -->
       <template v-else>
-        <!-- Odd depth = a surface facing AWAY from you, so what shows through is
-             the card's back, not its art. Even depth = facing you: real artwork. -->
         <div
           v-if="ghosts[i] && ghosts[i].depth % 2 === 1"
           :style="{ '--d': ghosts[i].depth }"

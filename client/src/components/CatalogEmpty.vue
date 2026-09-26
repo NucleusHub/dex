@@ -6,10 +6,6 @@ import { Icon, Spinner } from '@core/icons'
 import DexIcon from '@/components/DexIcon.vue'
 import { startCatalogSync } from '@/api/dex.js'
 
-// "The card database hasn't been downloaded yet" — a fundamentally different
-// empty state from "you don't own anything", and one only an admin can fix.
-// Admins get the button; everyone else gets a plain explanation rather than an
-// action they'd only be refused.
 const props = defineProps({
   state: { type: Object, default: null },
 })

@@ -19,9 +19,6 @@ import { useDexSettings } from '@/composables/useDexSettings.js'
 import { OWNED_FILTERS } from '@/utils/constants.js'
 import { year } from '@/utils/format.js'
 
-// Every card in a set, in release order. The grid is the app's centre of
-// gravity: artwork edge to edge, owned cards lit and missing ones dimmed, and a
-// (+) on anything you don't have yet.
 const route = useRoute()
 const { t } = useI18n()
 const { ownedInSet, isOwned } = useCollection()
@@ -38,16 +35,12 @@ const logoFailed = ref(false)
 
 const owned = computed(() => (set.value ? ownedInSet(set.value.setId) : 0))
 
-// ── Filters ──────────────────────────────────────────────────────────────────
-// Seeded from the user's "show cards I don't own" preference: with it off, the
-// grid opens on their own cards and the full set is one click away.
 const ownedFilter = ref(settings.showUnowned ? '' : 'yes')
 const rarityFilter = ref('')
 const query = ref('')
 const dense = ref(localStorage.getItem('dex-set-dense') === '1')
 watch(dense, (v) => localStorage.setItem('dex-set-dense', v ? '1' : '0'))
 
-// Rarities present in THIS set, so the dropdown never offers an empty filter.
 const rarities = computed(() =>
   [...new Set(cards.value.map((c) => c.rarity).filter(Boolean))].sort((a, b) => a.localeCompare(b))
 )
@@ -70,7 +63,6 @@ function clearFilters() {
   query.value = ''
 }
 
-// The run the card overlay's ← / → walk.
 const siblingIds = computed(() => visible.value.map((c) => c.cardId))
 
 const gridClass = computed(() =>
@@ -89,7 +81,6 @@ async function load(setId) {
     set.value = data.set
     seriesRow.value = data.series
     cards.value = data.cards
-    // A full set response is authoritative about ownership for every card in it.
     primeSet(data.set.setId, data.cards)
     seedProgress({ sets: [data.set], series: data.series ? [data.series] : undefined })
   } catch (e) {
@@ -139,7 +130,6 @@ const CHIP_ACTIVE = 'bg-indigo-50 dark:bg-indigo-500/15 border-indigo-300 dark:b
         </div>
 
         <template v-else-if="set">
-          <!-- Set header -->
           <section class="glass rounded-2xl p-5 flex flex-col sm:flex-row sm:items-center gap-5">
             <div class="shrink-0 h-16 sm:h-20 flex items-center">
               <img
@@ -170,7 +160,6 @@ const CHIP_ACTIVE = 'bg-indigo-50 dark:bg-indigo-500/15 border-indigo-300 dark:b
             </div>
           </section>
 
-          <!-- Toolbar -->
           <div class="glass rounded-2xl p-2 flex flex-wrap items-center gap-1.5">
             <div class="inline-flex items-center gap-0.5 bg-black/[0.04] dark:bg-white/5 rounded-xl p-1">
               <button
@@ -222,8 +211,6 @@ const CHIP_ACTIVE = 'bg-indigo-50 dark:bg-indigo-500/15 border-indigo-300 dark:b
               {{ t('dex.set.showing', { shown: visible.length, total: cards.length }) }}
             </span>
 
-            <!-- Density, not grid-vs-list: a card is an image, and a list of
-                 images is just a narrow grid. -->
             <div class="flex items-center h-9 bg-black/[0.05] dark:bg-white/5 rounded-lg p-1 gap-0.5">
               <button
                 @click="dense = false"
@@ -242,7 +229,6 @@ const CHIP_ACTIVE = 'bg-indigo-50 dark:bg-indigo-500/15 border-indigo-300 dark:b
             </div>
           </div>
 
-          <!-- Grid -->
           <div v-if="!visible.length" class="py-20 text-center text-sm text-slate-400">
             <p>{{ t('dex.set.noMatches') }}</p>
             <button v-if="hasFilters" class="cursor-pointer mt-3 text-indigo-600 dark:text-indigo-400 hover:underline" @click="clearFilters">
@@ -256,8 +242,6 @@ const CHIP_ACTIVE = 'bg-indigo-50 dark:bg-indigo-500/15 border-indigo-300 dark:b
         </template>
       </main>
 
-      <!-- Arrows follow the FILTERED grid, not the whole set: what you can see
-           is what you can step through. -->
       <CardDetailModal
         :show="showCard"
         :card-id="cardId"

@@ -6,8 +6,6 @@ import DexIcon from '@/components/DexIcon.vue'
 import { layoutMeta } from '@/utils/constants.js'
 import { seriesGradient } from '@/utils/artwork.js'
 
-// A binder in the list. Cover-led, like a real spine on a shelf — but flat and
-// modern: no leather, no rings, just the artwork and a name.
 const props = defineProps({
   binder: { type: Object, required: true },
 })
@@ -15,8 +13,6 @@ const props = defineProps({
 const { t } = useI18n()
 const coverFailed = ref(false)
 
-// A binder with no cover still gets a distinct look, derived from its id so the
-// same binder is always the same colour.
 const gradient = computed(() => seriesGradient({ seriesId: props.binder.id, name: props.binder.name }))
 const layout = computed(() => layoutMeta(props.binder.layout))
 </script>
@@ -42,8 +38,6 @@ const layout = computed(() => layoutMeta(props.binder.layout))
 
       <div class="absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-black/70 to-transparent" />
 
-      <!-- Shared binders say so on the tile: it changes what you expect to find
-           inside and who else can change it. -->
       <span
         v-if="binder.shared"
         class="absolute top-2.5 right-2.5 inline-flex items-center gap-1 rounded-full bg-slate-950/60 text-white text-[10px] font-medium px-2 py-1 backdrop-blur-sm"

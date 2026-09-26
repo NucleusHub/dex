@@ -15,9 +15,6 @@ import { useCollection, seedProgress } from '@/composables/useCollection.js'
 import { seriesArtwork, seriesGradient } from '@/utils/artwork.js'
 import { count } from '@/utils/format.js'
 
-// Every set in a series, in release order. One level down from the homepage and
-// deliberately quieter: the series banner carries the artwork, the sets below
-// are a calm grid of options.
 const route = useRoute()
 const { t, locale } = useI18n()
 const { ownedInSeries, ownedInSet } = useCollection()
@@ -33,10 +30,6 @@ const owned = computed(() => (series.value ? ownedInSeries(series.value.seriesId
 const artwork = computed(() => seriesArtwork(series.value))
 const gradient = computed(() => seriesGradient(series.value))
 
-// Sets a user has finished are worth surfacing, but not at the cost of release
-// order — so this is a filter, not a sort. Completion is read from the live
-// collection store, not the payload snapshot, so finishing a set while the
-// filter is on removes it immediately.
 const onlyIncomplete = ref(false)
 const visibleSets = computed(() =>
   onlyIncomplete.value
@@ -53,8 +46,6 @@ async function load(seriesId) {
     const data = await getSeriesDetail(seriesId)
     series.value = data.series
     sets.value = data.sets
-    // Hand the owned counts to the collection store, which owns them from here
-    // on — so adding a card deeper in updates these bars on the way back out.
     seedProgress({ series: [data.series], sets: data.sets })
   } catch (e) {
     error.value = e
@@ -98,7 +89,6 @@ watch(() => route.params.seriesId, (id) => load(String(id)), { immediate: true }
         </div>
 
         <template v-else-if="series">
-          <!-- Series banner -->
           <section class="relative rounded-3xl overflow-hidden" :style="{ background: gradient }">
             <img
               v-if="artwork && !artworkFailed"
@@ -127,7 +117,6 @@ watch(() => route.params.seriesId, (id) => load(String(id)), { immediate: true }
             </div>
           </section>
 
-          <!-- Toolbar -->
           <div class="flex items-center justify-between gap-3">
             <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
               {{ t('dex.series.expansions') }}

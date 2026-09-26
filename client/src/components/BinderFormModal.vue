@@ -10,18 +10,9 @@ import { useDexSettings } from '@/composables/useDexSettings.js'
 import { BINDER_LAYOUTS } from '@/utils/constants.js'
 import { binderPanels } from '@/utils/pluginIndicators.js'
 
-// Create or edit a binder: name, cover, page layout. One dialog for both, so
-// the choices a binder is made of are always presented the same way.
-//
-// Cover choices are an upload or a piece of official artwork already in the
-// catalog (a set logo) — genuine official art without vendoring copyrighted
-// images into the repo.
 const props = defineProps({
   show: { type: Boolean, default: false },
-  // null → create mode.
   binder: { type: Object, default: null },
-  // Which tab to land on. Lets the binder's Share button open this dialog
-  // straight onto Sharing rather than making the user find it behind Details.
   initialTab: { type: String, default: 'details' },
 })
 const emit = defineEmits(['close', 'saved'])
@@ -37,7 +28,6 @@ const busy = ref(false)
 const error = ref('')
 const uploading = ref(false)
 
-// Artwork picker
 const artwork = ref([])
 const artworkQuery = ref('')
 const artworkLoaded = ref(false)
@@ -46,13 +36,9 @@ const filteredArtwork = computed(() => {
   const rows = q
     ? artwork.value.filter((a) => `${a.name} ${a.seriesName}`.toLowerCase().includes(q))
     : artwork.value
-  // The full list is ~300 logos; cap the rendered grid so the dialog stays fast
-  // and searching is the way to reach the rest.
   return rows.slice(0, 60)
 })
 
-// Only offer sharing UI when a plugin actually provides it, and only on an
-// existing binder (there's nothing to share until it's been created).
 const panels = computed(() => (editing.value ? binderPanels : []))
 
 const TABS = computed(() => {
@@ -64,9 +50,7 @@ const TABS = computed(() => {
   return tabs
 })
 
-// Bound with v-model:tab rather than a static `tab` prop: TemplateModal lets a
-// bound `tab` win over its own internal state, so a one-way binding would pin
-// the dialog to one tab and swallow every click on the tab bar.
+// Bind with v-model:tab: TemplateModal lets a bound tab override its internal state.
 const tab = ref('details')
 
 watch(
@@ -75,8 +59,6 @@ watch(
     if (!show) return
     error.value = ''
     artworkQuery.value = ''
-    // Fall back to Details if the requested tab isn't on offer — e.g. Sharing
-    // asked for on a binder whose sharing plugin is gone.
     tab.value = TABS.value.some((x) => x.key === props.initialTab) ? props.initialTab : 'details'
     form.value = props.binder
       ? {
@@ -85,8 +67,6 @@ watch(
           cover: { ...(props.binder.cover ?? { kind: 'none', url: '', refId: '' }) },
         }
       : { name: '', layout: settings.defaultBinderLayout, cover: { kind: 'none', url: '', refId: '' } }
-    // Fetched once per session; the cover tab is one click away and a spinner
-    // there would be the only thing it ever showed.
     ensureArtwork()
   },
   { immediate: true }
@@ -126,8 +106,6 @@ async function onFile(e) {
   }
 }
 
-// Preview the cover as chosen, before it's saved — the server resolves `set`
-// covers to a logo, so mirror that here rather than showing nothing.
 const previewUrl = computed(() => {
   const c = form.value.cover
   if (c.kind === 'upload') return c.url
@@ -174,7 +152,6 @@ const LABEL = 'text-[11px] font-medium uppercase tracking-wide text-slate-400 da
     @cancel="emit('close')"
   >
     <template #default="{ activeTab }">
-      <!-- ── Details ─────────────────────────────────────────────────────── -->
       <div v-show="activeTab === 'details'" class="flex flex-col gap-5 pt-3">
         <div class="flex flex-col gap-1.5">
           <label :class="LABEL" for="dex-binder-name">{{ t('dex.binder.name') }}</label>
@@ -202,8 +179,6 @@ const LABEL = 'text-[11px] font-medium uppercase tracking-wide text-slate-400 da
                 : 'border-black/10 dark:border-white/10 hover:bg-black/[0.03] dark:hover:bg-white/5'"
               @click="form.layout = l.key"
             >
-              <!-- A literal miniature of the page grid: the clearest possible
-                   preview of what the choice means. -->
               <span class="grid gap-1" :style="{ gridTemplateColumns: `repeat(${l.cols}, minmax(0, 1fr))` }">
                 <span
                   v-for="n in l.perPage"
@@ -218,7 +193,6 @@ const LABEL = 'text-[11px] font-medium uppercase tracking-wide text-slate-400 da
         </div>
       </div>
 
-      <!-- ── Cover ───────────────────────────────────────────────────────── -->
       <div v-show="activeTab === 'cover'" class="flex flex-col gap-4 pt-3">
         <div class="flex items-center gap-4">
           <div class="shrink-0 w-24 h-20 rounded-xl bg-black/5 dark:bg-white/8 grid place-items-center overflow-hidden">
@@ -274,7 +248,6 @@ const LABEL = 'text-[11px] font-medium uppercase tracking-wide text-slate-400 da
         </div>
       </div>
 
-      <!-- ── Sharing (plugin-owned) ──────────────────────────────────────── -->
       <div v-show="activeTab === 'sharing'" class="pt-3">
         <component
           v-for="p in panels"

@@ -11,17 +11,12 @@ import SettingsModal from '@/components/SettingsModal.vue'
 import DexIcon from '@/components/DexIcon.vue'
 import { useBinders } from '@/composables/useBinders.js'
 
-// The user's binders. A binder is an arrangement the user makes by hand, so
-// this page is the one place in Dex that starts empty and stays empty until
-// they do something — hence the prominent create action.
 const { t } = useI18n()
 const { binders, loading, error, load, reload, upsert } = useBinders()
 const { open: settingsOpen, closeSettings } = useSettingsModal()
 
 const showForm = ref(false)
 
-// Ones you own vs ones shared with you. Only split the list when both exist —
-// two headings over one group is noise.
 const mine = computed(() => binders.value.filter((b) => b.role === 'owner'))
 const sharedWithMe = computed(() => binders.value.filter((b) => b.role !== 'owner'))
 

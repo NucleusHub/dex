@@ -1,11 +1,6 @@
 import { reactive, watch } from 'vue'
 import { getSettings, saveSettings } from '@/api/dex.js'
 
-// Per-user Dex preferences. The server is the source of truth so they follow the
-// user across devices; localStorage is a no-flash cache so the last-known values
-// render instantly before the server hydrate lands. Module-level reactive
-// singleton — the settings modal, the set view and the binder form all read and
-// write the same live state. Mirrors Shelf's useShelfSettings.
 const KEY = 'dex-settings'
 
 const DEFAULT = () => ({
@@ -38,7 +33,6 @@ watch(
     localStorage.setItem(KEY, json)
     if (json === lastSaved) return
     lastSaved = json
-    // Debounced: toggling a switch a few times is one write, not four.
     clearTimeout(saveTimer)
     saveTimer = setTimeout(() => saveSettings({ ...v }).catch(() => {}), 400)
   },
@@ -51,12 +45,10 @@ async function hydrate() {
   hydrated = true
   try {
     const server = withDefaults(await getSettings())
-    // Don't stomp on a change the user made while the request was in flight.
     if (touched) return
     lastSaved = JSON.stringify(server)
     Object.assign(settings, server)
   } catch {
-    // Offline / unauthenticated — keep the localStorage-backed values.
   }
 }
 

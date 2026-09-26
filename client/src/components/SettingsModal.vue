@@ -11,8 +11,6 @@ import { getAdminCatalog, saveAdminCatalog, startCatalogSync } from '@/api/dex.j
 import { BINDER_LAYOUTS } from '@/utils/constants.js'
 import { count, longDate } from '@/utils/format.js'
 
-// Dex settings. Two tabs, and the second only exists for admins: personal
-// display preferences, and the shared card database everybody browses.
 const props = defineProps({
   show: { type: Boolean, default: false },
 })
@@ -31,7 +29,6 @@ const TABS = computed(() => {
   return tabs
 })
 
-// ── Catalog (admin) ──────────────────────────────────────────────────────────
 const catalog = ref(null)
 const apiKeyInput = ref('')
 const savingKey = ref(false)
@@ -43,7 +40,6 @@ async function loadCatalog() {
   if (!isAdmin.value) return
   try {
     catalog.value = await getAdminCatalog()
-    // Keep polling only while there's something to watch.
     if (catalog.value.running) startPolling()
     else stopPolling()
   } catch (e) {
@@ -59,7 +55,6 @@ function startPolling() {
       catalog.value = next
       if (!next.running) {
         stopPolling()
-        // The homepage's series list is stale the moment a sync finishes.
         reloadCatalog()
       }
     } catch {
@@ -133,7 +128,6 @@ const INPUT =
     @cancel="emit('close')"
   >
     <template #default="{ activeTab }">
-      <!-- ── Display ─────────────────────────────────────────────────────── -->
       <div v-show="activeTab === 'display'" class="flex flex-col divide-y divide-black/[0.06] dark:divide-white/[0.08]">
         <label class="flex items-center justify-between gap-6 py-4 cursor-pointer">
           <span class="min-w-0">
@@ -191,13 +185,11 @@ const INPUT =
         </div>
       </div>
 
-      <!-- ── Catalog (admin only) ────────────────────────────────────────── -->
       <div v-if="isAdmin" v-show="activeTab === 'catalog'" class="flex flex-col gap-5 pt-3">
         <p class="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
           {{ t('dex.settings.catalogIntro') }}
         </p>
 
-        <!-- Current size -->
         <div class="grid grid-cols-3 gap-3">
           <div v-for="k in ['series', 'sets', 'cards']" :key="k" class="glass rounded-xl p-3 text-center">
             <p class="text-xl font-semibold tabular-nums">{{ count(catalog?.counts?.[k] ?? 0, locale) }}</p>
@@ -205,7 +197,6 @@ const INPUT =
           </div>
         </div>
 
-        <!-- Progress / status -->
         <div v-if="catalog?.running" class="glass rounded-xl p-4 flex flex-col gap-2.5">
           <div class="flex items-center justify-between gap-3 text-sm">
             <span class="inline-flex items-center gap-2 font-medium">
@@ -232,7 +223,6 @@ const INPUT =
           {{ t('dex.sync.lastSync', { date: longDate(catalog.lastSyncAt, locale) }) }}
         </p>
 
-        <!-- Actions -->
         <div class="flex flex-wrap items-center gap-2">
           <button
             class="nuc-press cursor-pointer inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors disabled:opacity-60"
@@ -253,7 +243,6 @@ const INPUT =
           </button>
         </div>
 
-        <!-- API key -->
         <div class="flex flex-col gap-1.5 pt-1">
           <span :class="LABEL">{{ t('dex.settings.apiKey') }}</span>
           <p :class="HINT">{{ t('dex.settings.apiKeyHint') }}</p>

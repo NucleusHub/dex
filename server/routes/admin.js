@@ -11,13 +11,9 @@ import { requireAdmin } from '../middleware/auth.js'
 import { describeSources } from '../sources/index.js'
 import { runSync, isRunning, loadConfig } from '../sync/runner.js'
 
-// Admin-only catalog management. Everything here operates on the GLOBAL card
-// database or on another user's data, which is exactly why it's gated.
 const router = Router()
 const uploadsDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../uploads')
 
-// GET /admin/catalog — sources, current config and sync state, for the admin
-// panel. `hasApiKey` is a boolean, never the key itself.
 router.get('/admin/catalog', requireAdmin, async (_req, res) => {
   try {
     const config = await loadConfig()
@@ -41,9 +37,6 @@ router.get('/admin/catalog', requireAdmin, async (_req, res) => {
   }
 })
 
-// PATCH /admin/catalog — set the source and/or API key. Sending `apiKey: ''`
-// clears it (back to keyless, rate-limited access); omitting it leaves it alone,
-// so the admin UI never has to round-trip a secret it can't read.
 router.patch('/admin/catalog', requireAdmin, async (req, res) => {
   try {
     const patch = {}
@@ -57,14 +50,10 @@ router.patch('/admin/catalog', requireAdmin, async (req, res) => {
   }
 })
 
-// POST /admin/catalog/sync — kick off a sync and return immediately. A full
-// first run downloads ~20k cards over several minutes, so it deliberately does
-// NOT block the request; the client polls /catalog/state for progress.
 router.post('/admin/catalog/sync', requireAdmin, async (req, res) => {
   try {
     if (isRunning()) return res.status(409).json({ error: 'A sync is already running' })
     const force = String(req.body?.force ?? '') === 'true' || req.body?.force === true
-    // Fire and forget — runSync writes its own progress and error state.
     runSync({ force }).catch((e) => console.error('[dex] sync crashed:', e))
     res.status(202).json({ started: true, force })
   } catch (err) {
@@ -72,9 +61,6 @@ router.post('/admin/catalog/sync', requireAdmin, async (req, res) => {
   }
 })
 
-// PATCH /admin/series/:seriesId/artwork — pin the homepage image for a series to
-// a specific official booster-pack image. `{ artworkUrl: null }` hands it back
-// to the automatic pick from the series' own set logos.
 router.patch('/admin/series/:seriesId/artwork', requireAdmin, async (req, res) => {
   try {
     const raw = req.body?.artworkUrl
@@ -91,9 +77,6 @@ router.patch('/admin/series/:seriesId/artwork', requireAdmin, async (req, res) =
   }
 })
 
-// POST /users/:userId/teardown — called by the admin panel when a user is
-// deleted: purge all of their Dex data and any binder covers they uploaded.
-// The catalog is untouched — it belongs to the install, not to any user.
 router.post('/users/:userId/teardown', requireAdmin, async (req, res) => {
   try {
     const binders = await Binder.find({ profileId: req.params.userId }).select('cover').lean()
@@ -107,8 +90,6 @@ router.post('/users/:userId/teardown', requireAdmin, async (req, res) => {
       Binder.deleteMany({ profileId: req.params.userId }),
       Settings.deleteMany({ profileId: req.params.userId }),
     ])
-    // Also drop them from any binder they were only a guest on, so a deleted
-    // profile leaves no dangling grant behind.
     await Binder.updateMany({}, { $pull: { shares: { profileId: req.params.userId } } })
     res.json({ ok: true, deleted: items.deletedCount })
   } catch (err) {

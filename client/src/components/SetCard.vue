@@ -7,9 +7,6 @@ import { count, year } from '@/utils/format.js'
 import ProgressBar from '@/components/ProgressBar.vue'
 import ProgressLabel from '@/components/ProgressLabel.vue'
 
-// A set inside a series. Smaller and calmer than a SeriesCard — the set logo on
-// glass, with the numbers underneath — so a series page of twenty sets reads as
-// a list of options rather than twenty competing posters.
 const props = defineProps({
   set: { type: Object, required: true },
 })
@@ -27,8 +24,6 @@ const logoFailed = ref(false)
     :to="`/sets/${set.setId}`"
     class="group glass rounded-2xl p-4 flex flex-col gap-3 nuc-press transition-shadow hover:shadow-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
   >
-    <!-- Logo plate. Fixed height so a row of sets stays on a grid even though
-         set logos vary wildly in aspect ratio. -->
     <div class="h-20 flex items-center justify-center">
       <img
         v-if="set.logoUrl && !logoFailed"
@@ -52,7 +47,6 @@ const logoFailed = ref(false)
           <template v-if="year(set.releaseDate)"> · {{ year(set.releaseDate) }}</template>
         </p>
       </div>
-      <!-- The one badge on the tile: a finished set. Everything else is the bar. -->
       <span
         v-if="complete"
         class="shrink-0 inline-flex items-center gap-1 rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 text-[10px] font-medium px-2 py-0.5"

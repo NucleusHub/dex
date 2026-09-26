@@ -8,21 +8,10 @@ import { useDexSettings } from '@/composables/useDexSettings.js'
 import { cardValue } from '@/utils/format.js'
 import { cardIndicators } from '@/utils/pluginIndicators.js'
 
-// One card in a grid. Artwork is the entire tile; the interface is what appears
-// around it. Owned cards render at full strength, un-owned ones are dimmed and
-// desaturated (see .dex-unowned in main.css) so a set's completion is legible at
-// a glance from across the room — which is the whole job of this screen.
 const props = defineProps({
   card: { type: Object, required: true },
-  // Hide the quick-add affordance where adding isn't the point (binder pockets).
   addable: { type: Boolean, default: true },
-  // Set inside a SHARED binder. Plugin indicators use it to answer "is this card
-  // already in this binder's collection?" instead of the broader "who else has
-  // this?" — see the in-common plugin's dexIndicator.
   binderId: { type: String, default: '' },
-  // Tiles default to lazy loading — a set is 200+ images. The binder's turning
-  // leaf overrides this: it is mounted only for the ~600ms of the flip, and a
-  // lazy image would not paint before the page had already turned.
   eager: { type: Boolean, default: false },
 })
 const emit = defineEmits(['open'])
@@ -37,18 +26,12 @@ const item = computed(() => itemFor(props.card.cardId))
 const imageFailed = ref(false)
 const adding = ref(false)
 
-// Quick-add straight from the grid: one tap, sensible defaults, no dialog. The
-// detail view is where quantity/condition/purchase get filled in.
 async function quickAdd() {
   if (adding.value) return
   adding.value = true
   try {
     await add(props.card)
   } catch (err) {
-    // useCollection already rolled the optimistic update back, so the tile
-    // returns to "not owned" rather than throwing an error over the artwork.
-    // It is logged rather than swallowed: a silent rollback is indistinguishable
-    // from "adding doesn't work", which is exactly how a real bug once hid.
     console.error('[dex] failed to add card to collection:', props.card.cardId, err)
   } finally {
     adding.value = false
@@ -76,8 +59,6 @@ async function quickAdd() {
         :class="owned ? '' : 'dex-unowned'"
         @error="imageFailed = true"
       />
-      <!-- No artwork from the source: still show the card's identity rather than
-           an empty box, so the pocket in the grid stays meaningful. -->
       <div
         v-else
         class="absolute inset-0 flex flex-col items-center justify-center gap-1 p-2 text-center"
@@ -87,9 +68,6 @@ async function quickAdd() {
         <span class="text-[10px] text-slate-400 tabular-nums">{{ card.number }}</span>
       </div>
 
-      <!-- Owned marker, bottom-left and out of the artwork's way. The quantity
-           chip rides next to it, but only past the first copy: a "1" on every
-           owned card is noise, "×3" is information. -->
       <span v-if="owned" class="absolute bottom-1.5 left-1.5 flex items-center gap-1">
         <span
           class="grid place-items-center w-5 h-5 rounded-full bg-emerald-500 text-white shadow"
@@ -109,8 +87,6 @@ async function quickAdd() {
       >{{ cardValue(card, locale) }}</span>
     </button>
 
-    <!-- Add (+). Only for cards you don't own — the whole "users never create
-         missing entries" idea: the card already exists, you just claim it. -->
     <button
       v-if="addable && !owned"
       type="button"
@@ -123,8 +99,6 @@ async function quickAdd() {
       <Icon name="plus" :sw="2.5" class="w-4 h-4 nuc-pop" />
     </button>
 
-    <!-- Plugin badges (e.g. In Common's "someone else has this too"). Gated on
-         the plugin's enabled state, same as Shelf and Watchlist do it. -->
     <div v-if="cardIndicators.length" class="absolute top-1.5 left-1.5 flex items-center gap-1">
       <component
         v-for="ind in cardIndicators"
